@@ -1,271 +1,217 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using Microsoft.Win32;
 
 namespace MyTodoist
 {
     public partial class MainWindow : Window
     {
-        private AppData data = new();
-        private string filePath = "data.json";
+        private AppData appData = new AppData();
+        private string dataFile = "data.json";
+        private string archiveFile = "archive.json";
 
         public MainWindow()
         {
             InitializeComponent();
             LoadData();
-            RefreshProjectsList();
-            FilterBox.Text = "Enter label to filter";
-            CheckDueTasks();
+            UpdateProjectsList();
+            SetPlaceholder(SearchBox, "Search tasks...");
+            SetPlaceholder(FilterBox, "Filter by label...");
+        }
+
+        private void SetPlaceholder(TextBox box, string placeholder)
+        {
+            box.Text = placeholder;
+            box.Foreground = System.Windows.Media.Brushes.Gray;
+        }
+        private void SearchBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (SearchBox.Text == "Search tasks...")
+            {
+                SearchBox.Text = "";
+                SearchBox.Foreground = System.Windows.Media.Brushes.White;
+            }
+        }
+        private void SearchBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(SearchBox.Text))
+                SetPlaceholder(SearchBox, "Search tasks...");
+        }
+        private void FilterBox_GotFocus(object sender, RoutedEventArgs e)
+        {
+            if (FilterBox.Text == "Filter by label...")
+            {
+                FilterBox.Text = "";
+                FilterBox.Foreground = System.Windows.Media.Brushes.White;
+            }
+        }
+        private void FilterBox_LostFocus(object sender, RoutedEventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(FilterBox.Text))
+                SetPlaceholder(FilterBox, "Filter by label...");
         }
 
         private void LoadData()
         {
-            if (File.Exists(filePath))
-                data = JsonSerializer.Deserialize<AppData>(File.ReadAllText(filePath)) ?? new AppData();
+            if (File.Exists(dataFile))
+            {
+                string json = File.ReadAllText(dataFile);
+                appData = JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
+            }
         }
-
         private void SaveData()
         {
-            File.WriteAllText(filePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
+            string json = JsonSerializer.Serialize(appData, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(dataFile, json);
+        }
+        private void SaveArchive(List<TaskItem> tasks)
+        {
+            string json = JsonSerializer.Serialize(tasks, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(archiveFile, json);
         }
 
-        private void RefreshProjectsList()
+        private void UpdateProjectsList()
         {
             ProjectsList.ItemsSource = null;
-            ProjectsList.ItemsSource = data.Projects.Select(p => p.Name);
+            ProjectsList.ItemsSource = appData.Projects;
         }
-
-        private void RefreshTasksList(Project project)
+        private void UpdateTasksList(Project project)
         {
             TasksList.ItemsSource = null;
-            TasksList.ItemsSource = project.Tasks.Select(TaskDisplay);
-        }
-
-        private string TaskDisplay(TaskItem t) =>
-            $"{t.Title} (Due: {t.DueDate?.ToShortDateString() ?? "N/A"}, Priority: {t.Priority}, Labels: [{string.Join(", ", t.Labels)}])";
-
-        private void AddProject_Click(object sender, RoutedEventArgs e)
-        {
-            var name = Microsoft.VisualBasic.Interaction.InputBox("Enter project name:");
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                data.Projects.Add(new Project { Name = name });
-                SaveData();
-                RefreshProjectsList();
-            }
-        }
-
-        private void EditProject_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0) return;
-            var name = Microsoft.VisualBasic.Interaction.InputBox("Edit project name:", data.Projects[ProjectsList.SelectedIndex].Name);
-            if (!string.IsNullOrWhiteSpace(name))
-            {
-                data.Projects[ProjectsList.SelectedIndex].Name = name;
-                SaveData();
-                RefreshProjectsList();
-            }
-        }
-
-        private void DeleteProject_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0) return;
-            data.Projects.RemoveAt(ProjectsList.SelectedIndex);
-            SaveData();
-            RefreshProjectsList();
-            TasksList.ItemsSource = null;
-        }
-
-        private void AddTask_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0) return;
-
-            var title = Microsoft.VisualBasic.Interaction.InputBox("Task title:");
-            if (string.IsNullOrWhiteSpace(title)) return;
-
-            var dueDateStr = Microsoft.VisualBasic.Interaction.InputBox("Due date (yyyy-mm-dd):");
-            DateTime? dueDate = null;
-            if (DateTime.TryParse(dueDateStr, out var date))
-                dueDate = date;
-
-            var priorityStr = Microsoft.VisualBasic.Interaction.InputBox("Priority (1=High, 2=Medium, 3=Low):");
-            if (!int.TryParse(priorityStr, out var priority)) priority = 3;
-
-            var labelsStr = Microsoft.VisualBasic.Interaction.InputBox("Labels (comma separated):");
-            var labels = labelsStr.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
-
-            data.Projects[ProjectsList.SelectedIndex].Tasks.Add(new TaskItem
-            {
-                Title = title,
-                DueDate = dueDate,
-                Priority = priority,
-                Labels = labels
-            });
-
-            SaveData();
-            RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
-        }
-
-        private void EditTask_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0 || TasksList.SelectedIndex < 0) return;
-            var project = data.Projects[ProjectsList.SelectedIndex];
-            var task = project.Tasks[TasksList.SelectedIndex];
-
-            var title = Microsoft.VisualBasic.Interaction.InputBox("Edit task title:", task.Title);
-            var dueStr = Microsoft.VisualBasic.Interaction.InputBox("Edit due date:", task.DueDate?.ToShortDateString() ?? "");
-            DateTime? due = null;
-            if (DateTime.TryParse(dueStr, out var date)) due = date;
-
-            var prioStr = Microsoft.VisualBasic.Interaction.InputBox("Edit priority:", task.Priority.ToString());
-            if (!int.TryParse(prioStr, out var prio)) prio = task.Priority;
-
-            var labelsStr = Microsoft.VisualBasic.Interaction.InputBox("Edit labels:", string.Join(", ", task.Labels));
-            var labels = labelsStr.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
-
-            task.Title = title;
-            task.DueDate = due;
-            task.Priority = prio;
-            task.Labels = labels;
-
-            SaveData();
-            RefreshTasksList(project);
-        }
-
-        private void DeleteTask_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0 || TasksList.SelectedIndex < 0) return;
-            var project = data.Projects[ProjectsList.SelectedIndex];
-            project.Tasks.RemoveAt(TasksList.SelectedIndex);
-            SaveData();
-            RefreshTasksList(project);
+            TasksList.ItemsSource = project.Tasks;
         }
 
         private void ProjectsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (ProjectsList.SelectedIndex < 0) return;
-            RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
+            if (ProjectsList.SelectedItem is Project project)
+                UpdateTasksList(project);
         }
 
-        // Drag & Drop
+        private void AddProject_Click(object sender, RoutedEventArgs e)
+        {
+            string name = Microsoft.VisualBasic.Interaction.InputBox("Enter project name:", "Add Project");
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                appData.Projects.Add(new Project { Name = name });
+                SaveData();
+                UpdateProjectsList();
+            }
+        }
+
+        private void AddTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedItem is Project project)
+            {
+                string title = Microsoft.VisualBasic.Interaction.InputBox("Enter task title:", "Add Task");
+                if (!string.IsNullOrWhiteSpace(title))
+                {
+                    project.Tasks.Add(new TaskItem
+                    {
+                        Title = title,
+                        DueDate = DateTime.Today.AddDays(1),
+                        Priority = 1,
+                        Labels = new List<string>()
+                    });
+                    SaveData();
+                    UpdateTasksList(project);
+                    ShowToastNotification("Reminder set", $"Task '{title}' added with due date tomorrow.");
+                }
+            }
+            else
+            {
+                MessageBox.Show("Select a project first!");
+            }
+        }
+
+        private void TasksList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (TasksList.SelectedItem is TaskItem task)
+            {
+                if (MessageBox.Show($"Mark '{task.Title}' as done?", "Complete Task", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                {
+                    task.IsCompleted = true;
+                    SaveArchive(new List<TaskItem> { task });
+                    if (ProjectsList.SelectedItem is Project proj)
+                        proj.Tasks.Remove(task);
+                    SaveData();
+                    UpdateTasksList(ProjectsList.SelectedItem as Project);
+                }
+            }
+        }
+
+        private void ShowToastNotification(string title, string message)
+        {
+            // Replaced Toast with MessageBox for WPF compatibility without NuGet
+            MessageBox.Show(message, title, MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+
+        private void ExportData_Click(object sender, RoutedEventArgs e)
+        {
+            File.Copy(dataFile, "export.json", true);
+            MessageBox.Show("Data exported to export.json");
+        }
+
+        private void ImportData_Click(object sender, RoutedEventArgs e)
+        {
+            if (!File.Exists("export.json"))
+            {
+                MessageBox.Show("export.json not found!");
+                return;
+            }
+            string json = File.ReadAllText("export.json");
+            appData = JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
+            SaveData();
+            UpdateProjectsList();
+        }
+
+        private void SortBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ProjectsList.SelectedItem is Project proj)
+            {
+                if (SortBox.SelectedIndex == 0)
+                    proj.Tasks = proj.Tasks.OrderBy(t => t.DueDate).ToList();
+                else if (SortBox.SelectedIndex == 1)
+                    proj.Tasks = proj.Tasks.OrderByDescending(t => t.Priority).ToList();
+                UpdateTasksList(proj);
+            }
+        }
+
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (ProjectsList.SelectedItem is Project proj)
+            {
+                var query = SearchBox.Text;
+                if (query != "Search tasks...")
+                {
+                    TasksList.ItemsSource = proj.Tasks.Where(t => t.Title.Contains(query, StringComparison.OrdinalIgnoreCase));
+                }
+                else
+                {
+                    UpdateTasksList(proj);
+                }
+            }
+        }
+
         private void TasksList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (TasksList.SelectedItem != null)
                 DragDrop.DoDragDrop(TasksList, TasksList.SelectedItem, DragDropEffects.Move);
         }
 
-        private void TasksList_DragOver(object sender, DragEventArgs e) => e.Effects = DragDropEffects.Move;
-
         private void TasksList_Drop(object sender, DragEventArgs e)
         {
-            if (ProjectsList.SelectedIndex < 0) return;
-            var sourceTaskStr = e.Data.GetData(typeof(string)) as string;
-            if (sourceTaskStr == null) return;
-
-            foreach (var project in data.Projects)
+            if (e.Data.GetData(typeof(TaskItem)) is TaskItem task && ProjectsList.SelectedItem is Project proj)
             {
-                var task = project.Tasks.FirstOrDefault(t => TaskDisplay(t) == sourceTaskStr);
-                if (task != null)
-                {
-                    project.Tasks.Remove(task);
-                    data.Projects[ProjectsList.SelectedIndex].Tasks.Add(task);
-                    SaveData();
-                    RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
-                    break;
-                }
-            }
-        }
-
-        // Filter
-        private void ApplyFilter_Click(object sender, RoutedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0) return;
-            var filter = FilterBox.Text.Trim().ToLower();
-            var project = data.Projects[ProjectsList.SelectedIndex];
-            TasksList.ItemsSource = project.Tasks
-                .Where(t => t.Labels.Any(l => l.ToLower() == filter))
-                .Select(TaskDisplay);
-        }
-
-        private void ClearFilter_Click(object sender, RoutedEventArgs e)
-        {
-            FilterBox.Text = "";
-            if (ProjectsList.SelectedIndex >= 0)
-                RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
-        }
-
-        private void FilterBox_GotFocus(object sender, RoutedEventArgs e)
-        {
-            if (FilterBox.Text == "Enter label to filter")
-                FilterBox.Text = "";
-        }
-
-        private void FilterBox_LostFocus(object sender, RoutedEventArgs e)
-        {
-            if (string.IsNullOrWhiteSpace(FilterBox.Text))
-                FilterBox.Text = "Enter label to filter";
-        }
-
-        // Sort
-        private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-        {
-            if (ProjectsList.SelectedIndex < 0) return;
-            var project = data.Projects[ProjectsList.SelectedIndex];
-            var selected = (SortCombo.SelectedItem as ComboBoxItem)?.Content.ToString();
-
-            var sorted = selected switch
-            {
-                "Sort by Due Date ↑" => project.Tasks.OrderBy(t => t.DueDate ?? DateTime.MaxValue),
-                "Sort by Due Date ↓" => project.Tasks.OrderByDescending(t => t.DueDate ?? DateTime.MinValue),
-                "Sort by Priority ↑" => project.Tasks.OrderBy(t => t.Priority),
-                "Sort by Priority ↓" => project.Tasks.OrderByDescending(t => t.Priority),
-                _ => project.Tasks
-            };
-
-            TasksList.ItemsSource = sorted.Select(TaskDisplay);
-        }
-
-        // Backup
-        private void ExportData_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new SaveFileDialog { Filter = "JSON Files (*.json)|*.json" };
-            if (dlg.ShowDialog() == true)
-                File.Copy(filePath, dlg.FileName, true);
-        }
-
-        private void ImportData_Click(object sender, RoutedEventArgs e)
-        {
-            var dlg = new OpenFileDialog { Filter = "JSON Files (*.json)|*.json" };
-            if (dlg.ShowDialog() == true)
-            {
-                File.Copy(dlg.FileName, filePath, true);
-                LoadData();
-                RefreshProjectsList();
-                TasksList.ItemsSource = null;
-            }
-        }
-
-        // Notification
-        private void CheckDueTasks()
-        {
-            var soonTasks = data.Projects
-                .SelectMany(p => p.Tasks)
-                .Where(t => t.DueDate.HasValue && (t.DueDate.Value - DateTime.Now).TotalDays <= 1)
-                .ToList();
-
-            if (soonTasks.Any())
-            {
-                MessageBox.Show(
-                    "Upcoming tasks:\n" + string.Join("\n", soonTasks.Select(t => $"{t.Title} - {t.DueDate?.ToShortDateString()}")),
-                    "Reminder",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                foreach (var p in appData.Projects)
+                    p.Tasks.Remove(task);
+                proj.Tasks.Add(task);
+                SaveData();
+                UpdateTasksList(proj);
             }
         }
     }
