@@ -3,7 +3,8 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using Microsoft.VisualBasic; // برای InputBox
+using System.Windows.Input;
+using Microsoft.VisualBasic;
 
 namespace MyTodoist
 {
@@ -11,6 +12,9 @@ namespace MyTodoist
     {
         private const string DataFile = "data.json";
         private AppData appData = new();
+
+        private (int projectIndex, int taskIndex)? _dragData;
+        private Point _dragStartPoint;
 
         public MainWindow()
         {
@@ -121,6 +125,45 @@ namespace MyTodoist
             else
             {
                 MessageBox.Show("Select a project first!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        // ---- Drag & Drop ----
+        private void TasksList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            _dragStartPoint = e.GetPosition(null);
+            if (TasksList.SelectedIndex >= 0 && ProjectsList.SelectedIndex >= 0)
+            {
+                _dragData = (ProjectsList.SelectedIndex, TasksList.SelectedIndex);
+                DragDrop.DoDragDrop(TasksList, _dragData, DragDropEffects.Move);
+            }
+        }
+
+        private void TasksList_DragOver(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(ValueTuple<int, int>)))
+            {
+                e.Effects = DragDropEffects.Move;
+            }
+        }
+
+        private void TasksList_Drop(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(typeof(ValueTuple<int, int>)))
+            {
+                var (sourceProjectIndex, sourceTaskIndex) = ((int, int))e.Data.GetData(typeof(ValueTuple<int, int>));
+                var targetProjectIndex = ProjectsList.SelectedIndex;
+
+                if (sourceProjectIndex >= 0 && sourceTaskIndex >= 0 &&
+                    targetProjectIndex >= 0 && targetProjectIndex < appData.Projects.Count)
+                {
+                    var task = appData.Projects[sourceProjectIndex].Tasks[sourceTaskIndex];
+                    appData.Projects[sourceProjectIndex].Tasks.RemoveAt(sourceTaskIndex);
+                    appData.Projects[targetProjectIndex].Tasks.Add(task);
+
+                    SaveData();
+                    RefreshTasksList(appData.Projects[targetProjectIndex]);
+                }
             }
         }
     }

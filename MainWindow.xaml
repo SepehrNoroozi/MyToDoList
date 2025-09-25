@@ -18,7 +18,13 @@
         <!--Tasks List -->
         <StackPanel Grid.Column="1">
             <TextBlock x:Name="TasksHeader" Text="Tasks" FontWeight="Bold" Margin="5" />
-            <ListBox x:Name="TasksList" Margin="5" />
+            <ListBox x:Name="TasksList"
+                Grid.Column="1"
+                AllowDrop="True"
+                PreviewMouseLeftButtonDown="TasksList_PreviewMouseLeftButtonDown"
+                Drop="TasksList_Drop"
+                DragOver="TasksList_DragOver"
+                Margin="5" />
             <Button Content="Add Task" Margin="5" Click="AddTask_Click"/>
         </StackPanel>
     </Grid>
