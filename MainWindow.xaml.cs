@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using Microsoft.Win32;
 
 namespace MyTodoist
 {
@@ -20,21 +21,18 @@ namespace MyTodoist
             LoadData();
             RefreshProjectsList();
             FilterBox.Text = "Enter label to filter";
+            CheckDueTasks();
         }
 
         private void LoadData()
         {
             if (File.Exists(filePath))
-            {
-                var json = File.ReadAllText(filePath);
-                data = JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
-            }
+                data = JsonSerializer.Deserialize<AppData>(File.ReadAllText(filePath)) ?? new AppData();
         }
 
         private void SaveData()
         {
-            var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(filePath, json);
+            File.WriteAllText(filePath, JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true }));
         }
 
         private void RefreshProjectsList()
@@ -46,9 +44,11 @@ namespace MyTodoist
         private void RefreshTasksList(Project project)
         {
             TasksList.ItemsSource = null;
-            TasksList.ItemsSource = project.Tasks.Select(t =>
-                $"{t.Title} (Due: {t.DueDate?.ToShortDateString() ?? "N/A"}, Priority: {t.Priority}, Labels: [{string.Join(", ", t.Labels)}])");
+            TasksList.ItemsSource = project.Tasks.Select(TaskDisplay);
         }
+
+        private string TaskDisplay(TaskItem t) =>
+            $"{t.Title} (Due: {t.DueDate?.ToShortDateString() ?? "N/A"}, Priority: {t.Priority}, Labels: [{string.Join(", ", t.Labels)}])";
 
         private void AddProject_Click(object sender, RoutedEventArgs e)
         {
@@ -61,6 +61,27 @@ namespace MyTodoist
             }
         }
 
+        private void EditProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex < 0) return;
+            var name = Microsoft.VisualBasic.Interaction.InputBox("Edit project name:", data.Projects[ProjectsList.SelectedIndex].Name);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                data.Projects[ProjectsList.SelectedIndex].Name = name;
+                SaveData();
+                RefreshProjectsList();
+            }
+        }
+
+        private void DeleteProject_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex < 0) return;
+            data.Projects.RemoveAt(ProjectsList.SelectedIndex);
+            SaveData();
+            RefreshProjectsList();
+            TasksList.ItemsSource = null;
+        }
+
         private void AddTask_Click(object sender, RoutedEventArgs e)
         {
             if (ProjectsList.SelectedIndex < 0) return;
@@ -68,22 +89,18 @@ namespace MyTodoist
             var title = Microsoft.VisualBasic.Interaction.InputBox("Task title:");
             if (string.IsNullOrWhiteSpace(title)) return;
 
-            var dueDateStr = Microsoft.VisualBasic.Interaction.InputBox("Due date (yyyy-mm-dd) or leave empty:");
+            var dueDateStr = Microsoft.VisualBasic.Interaction.InputBox("Due date (yyyy-mm-dd):");
             DateTime? dueDate = null;
-            if (!string.IsNullOrWhiteSpace(dueDateStr) && DateTime.TryParse(dueDateStr, out var date))
+            if (DateTime.TryParse(dueDateStr, out var date))
                 dueDate = date;
 
             var priorityStr = Microsoft.VisualBasic.Interaction.InputBox("Priority (1=High, 2=Medium, 3=Low):");
-            if (!int.TryParse(priorityStr, out var priority) || priority < 1 || priority > 3)
-                priority = 3;
+            if (!int.TryParse(priorityStr, out var priority)) priority = 3;
 
             var labelsStr = Microsoft.VisualBasic.Interaction.InputBox("Labels (comma separated):");
-            var labels = labelsStr.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                                  .Select(l => l.Trim())
-                                  .ToList();
+            var labels = labelsStr.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
 
-            var project = data.Projects[ProjectsList.SelectedIndex];
-            project.Tasks.Add(new TaskItem
+            data.Projects[ProjectsList.SelectedIndex].Tasks.Add(new TaskItem
             {
                 Title = title,
                 DueDate = dueDate,
@@ -91,6 +108,41 @@ namespace MyTodoist
                 Labels = labels
             });
 
+            SaveData();
+            RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
+        }
+
+        private void EditTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex < 0 || TasksList.SelectedIndex < 0) return;
+            var project = data.Projects[ProjectsList.SelectedIndex];
+            var task = project.Tasks[TasksList.SelectedIndex];
+
+            var title = Microsoft.VisualBasic.Interaction.InputBox("Edit task title:", task.Title);
+            var dueStr = Microsoft.VisualBasic.Interaction.InputBox("Edit due date:", task.DueDate?.ToShortDateString() ?? "");
+            DateTime? due = null;
+            if (DateTime.TryParse(dueStr, out var date)) due = date;
+
+            var prioStr = Microsoft.VisualBasic.Interaction.InputBox("Edit priority:", task.Priority.ToString());
+            if (!int.TryParse(prioStr, out var prio)) prio = task.Priority;
+
+            var labelsStr = Microsoft.VisualBasic.Interaction.InputBox("Edit labels:", string.Join(", ", task.Labels));
+            var labels = labelsStr.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(l => l.Trim()).ToList();
+
+            task.Title = title;
+            task.DueDate = due;
+            task.Priority = prio;
+            task.Labels = labels;
+
+            SaveData();
+            RefreshTasksList(project);
+        }
+
+        private void DeleteTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex < 0 || TasksList.SelectedIndex < 0) return;
+            var project = data.Projects[ProjectsList.SelectedIndex];
+            project.Tasks.RemoveAt(TasksList.SelectedIndex);
             SaveData();
             RefreshTasksList(project);
         }
@@ -101,18 +153,14 @@ namespace MyTodoist
             RefreshTasksList(data.Projects[ProjectsList.SelectedIndex]);
         }
 
-        // Drag & Drop logic
+        // Drag & Drop
         private void TasksList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
         {
             if (TasksList.SelectedItem != null)
                 DragDrop.DoDragDrop(TasksList, TasksList.SelectedItem, DragDropEffects.Move);
         }
 
-        private void TasksList_DragOver(object sender, DragEventArgs e)
-        {
-            e.Effects = DragDropEffects.Move;
-            e.Handled = true;
-        }
+        private void TasksList_DragOver(object sender, DragEventArgs e) => e.Effects = DragDropEffects.Move;
 
         private void TasksList_Drop(object sender, DragEventArgs e)
         {
@@ -122,9 +170,7 @@ namespace MyTodoist
 
             foreach (var project in data.Projects)
             {
-                var task = project.Tasks.FirstOrDefault(t =>
-                    sourceTaskStr.StartsWith(t.Title) &&
-                    sourceTaskStr.Contains($"Labels: [{string.Join(", ", t.Labels)}]"));
+                var task = project.Tasks.FirstOrDefault(t => TaskDisplay(t) == sourceTaskStr);
                 if (task != null)
                 {
                     project.Tasks.Remove(task);
@@ -136,19 +182,15 @@ namespace MyTodoist
             }
         }
 
-        // Filter logic
+        // Filter
         private void ApplyFilter_Click(object sender, RoutedEventArgs e)
         {
             if (ProjectsList.SelectedIndex < 0) return;
             var filter = FilterBox.Text.Trim().ToLower();
             var project = data.Projects[ProjectsList.SelectedIndex];
-
-            var filtered = project.Tasks
-                                  .Where(t => t.Labels.Any(l => l.ToLower() == filter))
-                                  .Select(t =>
-                                      $"{t.Title} (Due: {t.DueDate?.ToShortDateString() ?? "N/A"}, Priority: {t.Priority}, Labels: [{string.Join(", ", t.Labels)}])");
-
-            TasksList.ItemsSource = filtered;
+            TasksList.ItemsSource = project.Tasks
+                .Where(t => t.Labels.Any(l => l.ToLower() == filter))
+                .Select(TaskDisplay);
         }
 
         private void ClearFilter_Click(object sender, RoutedEventArgs e)
@@ -168,6 +210,63 @@ namespace MyTodoist
         {
             if (string.IsNullOrWhiteSpace(FilterBox.Text))
                 FilterBox.Text = "Enter label to filter";
+        }
+
+        // Sort
+        private void SortCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex < 0) return;
+            var project = data.Projects[ProjectsList.SelectedIndex];
+            var selected = (SortCombo.SelectedItem as ComboBoxItem)?.Content.ToString();
+
+            var sorted = selected switch
+            {
+                "Sort by Due Date ↑" => project.Tasks.OrderBy(t => t.DueDate ?? DateTime.MaxValue),
+                "Sort by Due Date ↓" => project.Tasks.OrderByDescending(t => t.DueDate ?? DateTime.MinValue),
+                "Sort by Priority ↑" => project.Tasks.OrderBy(t => t.Priority),
+                "Sort by Priority ↓" => project.Tasks.OrderByDescending(t => t.Priority),
+                _ => project.Tasks
+            };
+
+            TasksList.ItemsSource = sorted.Select(TaskDisplay);
+        }
+
+        // Backup
+        private void ExportData_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new SaveFileDialog { Filter = "JSON Files (*.json)|*.json" };
+            if (dlg.ShowDialog() == true)
+                File.Copy(filePath, dlg.FileName, true);
+        }
+
+        private void ImportData_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new OpenFileDialog { Filter = "JSON Files (*.json)|*.json" };
+            if (dlg.ShowDialog() == true)
+            {
+                File.Copy(dlg.FileName, filePath, true);
+                LoadData();
+                RefreshProjectsList();
+                TasksList.ItemsSource = null;
+            }
+        }
+
+        // Notification
+        private void CheckDueTasks()
+        {
+            var soonTasks = data.Projects
+                .SelectMany(p => p.Tasks)
+                .Where(t => t.DueDate.HasValue && (t.DueDate.Value - DateTime.Now).TotalDays <= 1)
+                .ToList();
+
+            if (soonTasks.Any())
+            {
+                MessageBox.Show(
+                    "Upcoming tasks:\n" + string.Join("\n", soonTasks.Select(t => $"{t.Title} - {t.DueDate?.ToShortDateString()}")),
+                    "Reminder",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+            }
         }
     }
 }
