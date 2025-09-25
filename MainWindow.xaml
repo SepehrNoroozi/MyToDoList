@@ -1,31 +1,40 @@
 ﻿<Window x:Class="MyTodoist.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MyToDoList" Height="450" Width="800">
+        Title="MyTodoist" Height="450" Width="800">
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="200" />
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="2*" />
+            <ColumnDefinition Width="3*" />
         </Grid.ColumnDefinitions>
-            
-        <!--Projects List -->
+
+        <!-- Projects Column -->
         <StackPanel Grid.Column="0">
-            <TextBlock Text="Projects" FontWeight="Bold" Margin="5" />
-            <ListBox x:Name="ProjectsList" Margin="5" SelectionChanged="ProjectsList_SelectionChanged"/>
-            <Button Content="Add Project" Margin="5" Click="AddProject_Click"/>
+            <TextBlock Text="Projects" FontSize="16" FontWeight="Bold" Margin="5" />
+            <ListBox x:Name="ProjectsList"
+                     Margin="5"
+                     SelectionChanged="ProjectsList_SelectionChanged"/>
+            <Button Content="Add Project"
+                    Margin="5"
+                    Click="AddProject_Click"/>
         </StackPanel>
 
-        <!--Tasks List -->
+        <!-- Tasks Column -->
         <StackPanel Grid.Column="1">
-            <TextBlock x:Name="TasksHeader" Text="Tasks" FontWeight="Bold" Margin="5" />
+            <TextBlock x:Name="TasksHeader"
+                       Text="Tasks"
+                       FontSize="16"
+                       FontWeight="Bold"
+                       Margin="5"/>
             <ListBox x:Name="TasksList"
-                Grid.Column="1"
-                AllowDrop="True"
-                PreviewMouseLeftButtonDown="TasksList_PreviewMouseLeftButtonDown"
-                Drop="TasksList_Drop"
-                DragOver="TasksList_DragOver"
-                Margin="5" />
-            <Button Content="Add Task" Margin="5" Click="AddTask_Click"/>
+                     Margin="5"
+                     AllowDrop="True"
+                     PreviewMouseLeftButtonDown="TasksList_PreviewMouseLeftButtonDown"
+                     DragOver="TasksList_DragOver"
+                     Drop="TasksList_Drop"/>
+            <Button Content="Add Task"
+                    Margin="5"
+                    Click="AddTask_Click"/>
         </StackPanel>
     </Grid>
 </Window>
