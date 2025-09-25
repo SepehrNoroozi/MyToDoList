@@ -13,7 +13,8 @@ namespace MyTodoist
     {
         public string Title { get; set; }
         public DateTime? DueDate { get; set; }
-        public int Priority { get; set; } // 1=High, 2=Medium, 3=Low
+        public int Priority { get; set; } // 1 = High, 2 = Medium, 3 = Low
+        public List<string> Labels { get; set; } = new();
     }
 
     public class AppData
