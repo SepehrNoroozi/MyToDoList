@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 namespace MyTodoist
@@ -11,6 +12,8 @@ namespace MyTodoist
     public class TaskItem
     {
         public string Title { get; set; }
+        public DateTime? DueDate { get; set; }
+        public int Priority { get; set; } // 1=High, 2=Medium, 3=Low
     }
 
     public class AppData

@@ -1,9 +1,9 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using Microsoft.VisualBasic; // برای InputBox
 
 namespace MyTodoist
 {
@@ -56,7 +56,15 @@ namespace MyTodoist
             TasksList.Items.Clear();
             foreach (var task in project.Tasks)
             {
-                TasksList.Items.Add(task.Title);
+                string due = task.DueDate.HasValue ? task.DueDate.Value.ToString("yyyy-MM-dd") : "No date";
+                string priorityText = task.Priority switch
+                {
+                    1 => "High",
+                    2 => "Medium",
+                    3 => "Low",
+                    _ => "?"
+                };
+                TasksList.Items.Add($"{task.Title} | {due} | {priorityText}");
             }
         }
 
@@ -72,7 +80,9 @@ namespace MyTodoist
 
         private void AddProject_Click(object sender, RoutedEventArgs e)
         {
-            string newProject = $"Project {appData.Projects.Count + 1}";
+            string newProject = Interaction.InputBox("Enter project name:", "New Project", $"Project {appData.Projects.Count + 1}");
+            if (string.IsNullOrWhiteSpace(newProject)) return;
+
             appData.Projects.Add(new Project { Name = newProject });
             SaveData();
             RefreshProjectsList();
@@ -83,8 +93,28 @@ namespace MyTodoist
             if (ProjectsList.SelectedIndex >= 0)
             {
                 var project = appData.Projects[ProjectsList.SelectedIndex];
-                string newTask = $"Task {project.Tasks.Count + 1}";
-                project.Tasks.Add(new TaskItem { Title = newTask });
+
+                string title = Interaction.InputBox("Enter task title:", "New Task", $"Task {project.Tasks.Count + 1}");
+                if (string.IsNullOrWhiteSpace(title)) return;
+
+                string dateInput = Interaction.InputBox("Enter due date (yyyy-mm-dd):", "Due Date", "");
+                DateTime? dueDate = null;
+                if (DateTime.TryParse(dateInput, out DateTime parsedDate))
+                {
+                    dueDate = parsedDate;
+                }
+
+                string priorityInput = Interaction.InputBox("Enter priority (1=High, 2=Medium, 3=Low):", "Priority", "2");
+                int priority = 2;
+                int.TryParse(priorityInput, out priority);
+
+                project.Tasks.Add(new TaskItem
+                {
+                    Title = title,
+                    DueDate = dueDate,
+                    Priority = priority
+                });
+
                 SaveData();
                 RefreshTasksList(project);
             }
