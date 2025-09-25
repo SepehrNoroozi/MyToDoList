@@ -1,45 +1,92 @@
-﻿using System.Windows;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using System.Windows;
+using System.Windows.Controls;
 
 namespace MyTodoist
 {
     public partial class MainWindow : Window
     {
+        private const string DataFile = "data.json";
+        private AppData appData = new();
+
         public MainWindow()
         {
             InitializeComponent();
-            LoadSampleData();
+            LoadData();
+            RefreshProjectsList();
         }
 
-        private void LoadSampleData()
+        private void LoadData()
         {
-            ProjectsList.Items.Add("Personal");
-            ProjectsList.Items.Add("Work");
-            ProjectsList.Items.Add("Shopping");
-        }
-
-        private void ProjectsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
-        {
-            if (ProjectsList.SelectedItem != null)
+            if (File.Exists(DataFile))
             {
-                TasksHeader.Text = $"{ProjectsList.SelectedItem} - Tasks";
-                TasksList.Items.Clear();
+                string json = File.ReadAllText(DataFile);
+                appData = JsonSerializer.Deserialize<AppData>(json) ?? new AppData();
             }
+            else
+            {
+                appData = new AppData();
+                SaveData();
+            }
+        }
 
-            
+        private void SaveData()
+        {
+            string json = JsonSerializer.Serialize(appData, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+            File.WriteAllText(DataFile, json);
+        }
+
+        private void RefreshProjectsList()
+        {
+            ProjectsList.Items.Clear();
+            foreach (var project in appData.Projects)
+            {
+                ProjectsList.Items.Add(project.Name);
+            }
+        }
+
+        private void RefreshTasksList(Project project)
+        {
+            TasksList.Items.Clear();
+            foreach (var task in project.Tasks)
+            {
+                TasksList.Items.Add(task.Title);
+            }
+        }
+
+        private void ProjectsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ProjectsList.SelectedIndex >= 0)
+            {
+                var project = appData.Projects[ProjectsList.SelectedIndex];
+                TasksHeader.Text = $"{project.Name} - Tasks";
+                RefreshTasksList(project);
+            }
         }
 
         private void AddProject_Click(object sender, RoutedEventArgs e)
         {
-            string newProjectName = $"Project {ProjectsList.Items.Count + 1}";
-            ProjectsList.Items.Add(newProjectName);
+            string newProject = $"Project {appData.Projects.Count + 1}";
+            appData.Projects.Add(new Project { Name = newProject });
+            SaveData();
+            RefreshProjectsList();
         }
 
         private void AddTask_Click(object sender, RoutedEventArgs e)
         {
-            if (ProjectsList.SelectedItem != null)
+            if (ProjectsList.SelectedIndex >= 0)
             {
-                string newTaskName = $"Task {TasksList.Items.Count + 1}";
-                TasksList.Items.Add(newTask);
+                var project = appData.Projects[ProjectsList.SelectedIndex];
+                string newTask = $"Task {project.Tasks.Count + 1}";
+                project.Tasks.Add(new TaskItem { Title = newTask });
+                SaveData();
+                RefreshTasksList(project);
             }
             else
             {
