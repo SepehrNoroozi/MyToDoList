@@ -1,23 +1,25 @@
 ﻿<Window x:Class="MyTodoist.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="My ToDoList" Height="350" Width="525">
+        Title="MyToDoList" Height="450" Width="800">
     <Grid Margin="10">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="200" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
+            
+        <!--Projects List -->
+        <StackPanel Grid.Column="0">
+            <TextBlock Text="Projects" FontWeight="Bold" Margin="5" />
+            <ListBox x:Name="ProjectsList" Margin="5" SelectionChanged="ProjectsList_SelectionChanged"/>
+            <Button Content="Add Project" Margin="5" Click="AddProject_Click"/>
+        </StackPanel>
 
-        <ListBox x:Name="ListLeft" Grid.Column="0" Margin="5" />
-        <ListBox x:Name="ListRight" Grid.Column="1" Margin="5" />
-
-        <Button Content="Move to Right" Width="120" Height="30"
-                HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="0,0,0,10" Click="MoveToRight_Click"/>
-
-        <Button Content="Move to Left" Width="120" Height="30"
-                Grid.Column="1"
-                HorizontalAlignment="Center" VerticalAlignment="Bottom"
-                Margin="0,0,0,10" Click="MoveToLeft_Click"/>
+        <!--Tasks List -->
+        <StackPanel Grid.Column="1">
+            <TextBlock x:Name="TasksHeader" Text="Tasks" FontWeight="Bold" Margin="5" />
+            <ListBox x:Name="TasksList" Margin="5" />
+            <Button Content="Add Task" Margin="5" Click="AddTask_Click"/>
+        </StackPanel>
     </Grid>
 </Window>

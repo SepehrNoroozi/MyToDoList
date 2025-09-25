@@ -1,5 +1,4 @@
 ﻿using System.Windows;
-using System.Windows.Controls;
 
 namespace MyTodoist
 {
@@ -8,38 +7,43 @@ namespace MyTodoist
         public MainWindow()
         {
             InitializeComponent();
-
-            // نمونه داده
-            ListLeft.Items.Add("Item 1");
-            ListLeft.Items.Add("Item 2");
-            ListLeft.Items.Add("Item 3");
+            LoadSampleData();
         }
 
-        private void MoveToRight_Click(object sender, RoutedEventArgs e)
+        private void LoadSampleData()
         {
-            var selectedItems = ListLeft.SelectedItems;
-            foreach (var item in selectedItems)
-            {
-                ListRight.Items.Add(item);
-            }
-
-            while (ListLeft.SelectedItems.Count > 0)
-            {
-                ListLeft.Items.Remove(ListLeft.SelectedItems[0]);
-            }
+            ProjectsList.Items.Add("Personal");
+            ProjectsList.Items.Add("Work");
+            ProjectsList.Items.Add("Shopping");
         }
 
-        private void MoveToLeft_Click(object sender, RoutedEventArgs e)
+        private void ProjectsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
         {
-            var selectedItems = ListRight.SelectedItems;
-            foreach (var item in selectedItems)
+            if (ProjectsList.SelectedItem != null)
             {
-                ListLeft.Items.Add(item);
+                TasksHeader.Text = $"{ProjectsList.SelectedItem} - Tasks";
+                TasksList.Items.Clear();
             }
 
-            while (ListRight.SelectedItems.Count > 0)
+            
+        }
+
+        private void AddProject_Click(object sender, RoutedEventArgs e)
+        {
+            string newProjectName = $"Project {ProjectsList.Items.Count + 1}";
+            ProjectsList.Items.Add(newProjectName);
+        }
+
+        private void AddTask_Click(object sender, RoutedEventArgs e)
+        {
+            if (ProjectsList.SelectedItem != null)
             {
-                ListRight.Items.Remove(ListRight.SelectedItems[0]);
+                string newTaskName = $"Task {TasksList.Items.Count + 1}";
+                TasksList.Items.Add(newTask);
+            }
+            else
+            {
+                MessageBox.Show("Select a project first!", "Warning", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
     }
