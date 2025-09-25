@@ -3,13 +3,16 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              StartupUri="MainWindow.xaml">
     <Application.Resources>
-        <!-- Material Design resource dictionaries -->
+        <!-- Base Material Design theming -->
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <!-- رنگ‌ها -->
+                <!-- Core Light Theme -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes;component/Themes/MaterialDesignTheme.Light.xaml" />
+                <!-- Default control styles -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignThemes;component/Themes/MaterialDesignTheme.Defaults.xaml" />
+                <!-- Primary color palette (Deep Purple) -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Primary/MaterialDesignColor.DeepPurple.xaml" />
+                <!-- Accent color palette (Lime) -->
                 <ResourceDictionary Source="pack://application:,,,/MaterialDesignColors;component/Themes/Recommended/Accent/MaterialDesignColor.Lime.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
